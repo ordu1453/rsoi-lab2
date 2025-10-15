@@ -15,6 +15,18 @@ services:
       - "5432:5432"
 
 # TODO добавить сервисы
+  rating:
+    build: ./v4/rating
+    container_name: rating_service
+    restart: on-failure
+    environment:
+      DATABASE_URL: postgresql://program:test@postgres:5432/ratings
+      FLASK_APP: app.py
+      FLASK_ENV: development
+    ports:
+      - "8050:8050"
+    depends_on:
+      - postgres
 
 volumes:
   db-data:
