@@ -28,5 +28,15 @@ services:
     depends_on:
       - postgres
 
+  library:
+    build: ./v4/rating  # путь к папке с Library, поправь на свой
+    container_name: library_service
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://program:test@postgres:5432/libraries
+    ports:
+      - "8060:8060"
+
 volumes:
   db-data:
