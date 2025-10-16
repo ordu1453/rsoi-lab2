@@ -6,7 +6,6 @@ import os
 
 app = Flask(__name__)
 
-# Используем имя сервиса 'postgres' вместо 'localhost'
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql://program:test@postgres:5432/libraries"
@@ -15,7 +14,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 db = SQLAlchemy(app)
 
 
-# Модели
 class Library(db.Model):
     __tablename__ = 'library'
     id = db.Column(db.Integer, primary_key=True)
@@ -46,16 +44,13 @@ class LibraryBook(db.Model):
     library = relationship('Library', back_populates='books')
 
 
-# Инициализация базы (для теста)
 @app.before_request
 def create_tables():
     db.create_all()
 
 
 
-    # Проверяем, есть ли данные, чтобы не дублировать
     if not Library.query.first():
-        # Создаем библиотеку
         library = Library(
             id=1,
             library_uid="83575e12-7ce0-48ee-9931-51919ff3c9ee",
@@ -65,7 +60,6 @@ def create_tables():
         )
         db.session.add(library)
 
-        # Создаем книгу
         book = Book(
             id=1,
             book_uid="f7cdc58f-2caf-4b15-9727-f89dcc629b27",
@@ -76,7 +70,6 @@ def create_tables():
         )
         db.session.add(book)
 
-        # Связываем книгу с библиотекой
         lib_book = LibraryBook(
             book_id=book.id,
             library_id=library.id,
@@ -88,7 +81,6 @@ def create_tables():
         print("Test data created")
 
 
-# Эндпоинт для списка библиотек
 @app.route('/api/v1/libraries', methods=['GET'])
 def get_libraries():
     city = request.args.get('city')
@@ -116,7 +108,6 @@ def get_libraries():
     })
 
 
-# Эндпоинт для списка книг в библиотеке
 @app.route('/api/v1/libraries/<library_uid>/books', methods=['GET'])
 def get_books(library_uid):
     show_all = request.args.get('showAll', 'false').lower() == 'true'
