@@ -41,18 +41,18 @@ services:
     ports:
       - "8060:8060"
 
-    reservation:
-    build: ./v4/reservation 
-    container_name: reservation_service
-    restart: on-failure
-    depends_on:
-      - postgres
-    environment:
-      DATABASE_URL: postgresql://program:test@postgres:5432/reservation
-      FLASK_APP: app.py
-      FLASK_ENV: development
-    ports:
-      - "8060:8060"
+    # reservation:
+    # build: ./v4/reservation 
+    # container_name: reservation_service
+    # restart: on-failure
+    # depends_on:
+    #   - postgres
+    # environment:
+    #   DATABASE_URL: postgresql://program:test@postgres:5432/reservation
+    #   FLASK_APP: app.py
+    #   FLASK_ENV: development
+    # ports:
+    #   - "8070:8070"
 
 volumes:
   db-data:
