@@ -13,15 +13,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY wait-for-postgres.sh /wait-for-postgres.sh
-RUN chmod +x /wait-for-postgres.sh
-
-CMD ["/wait-for-postgres.sh", "postgres", "python", "app.py"]
 
 
+# Копируем код
+COPY . .
 
-# # Копируем код
-# COPY . .
-
-# EXPOSE 8060
-# CMD ["python", "app.py"]
+EXPOSE 8060
+CMD ["python", "app.py"]
