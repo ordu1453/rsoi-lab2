@@ -29,12 +29,28 @@ services:
       - postgres
 
   library:
-    build: ./v4/rating  # путь к папке с Library, поправь на свой
+    build: ./v4/library  
     container_name: library_service
+    restart: on-failure
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: postgresql://program:test@postgres:5432/libraries
+      DATABASE_URL: postgresql://program:test@postgres:5432/ratings
+      FLASK_APP: app.py
+      FLASK_ENV: development
+    ports:
+      - "8060:8060"
+
+    reservation:
+    build: ./v4/reservation 
+    container_name: reservation_service
+    restart: on-failure
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://program:test@postgres:5432/reservation
+      FLASK_APP: app.py
+      FLASK_ENV: development
     ports:
       - "8060:8060"
 
