@@ -80,18 +80,27 @@ def create_tables():
         db.session.commit()
         print("Test data created")
 
-
 @app.route('/api/v1/libraries', methods=['GET'])
 def get_libraries():
+    def safe_int(value, default):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    # Читаем query-параметры
     city = request.args.get('city')
-    page = int(request.args.get('page', 1))
-    size = int(request.args.get('size', 10))
+    page = safe_int(request.args.get('page'), 1)
+    size = safe_int(request.args.get('size'), 1)
+
+
     if not city:
         return jsonify({"message": "City parameter is required"}), 400
 
     query = Library.query.filter_by(city=city)
     total = query.count()
-    libraries = query.offset((page-1)*size).limit(size).all()
+    # libraries = query.offset((page-1)*size).limit(size).all()
+    libraries = query.all()
     items = [
         {
             "libraryUid": lib.library_uid,
@@ -108,22 +117,38 @@ def get_libraries():
     })
 
 
+
 @app.route('/api/v1/libraries/<library_uid>/books', methods=['GET'])
 def get_books(library_uid):
-    show_all = request.args.get('showAll', 'false').lower() == 'true'
-    page = int(request.args.get('page', 1))
-    size = int(request.args.get('size', 10))
+    DEFAULT_PAGE = 1
+    DEFAULT_SIZE = 1
 
+    def safe_int(value, default):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    # Читаем query-параметры
+    show_all = request.args.get('showAll', 'false').lower() == 'true'
+    page = safe_int(request.args.get('page'), DEFAULT_PAGE)
+    size = safe_int(request.args.get('size'), DEFAULT_SIZE)
+
+
+    # Находим библиотеку
     library = Library.query.filter_by(library_uid=library_uid).first()
     if not library:
         return jsonify({"message": "Library not found"}), 404
 
+    # Формируем запрос к книгам
     query = LibraryBook.query.filter_by(library_id=library.id)
     if not show_all:
         query = query.filter(LibraryBook.available_count > 0)
 
     total = query.count()
-    library_books = query.offset((page-1)*size).limit(size).all()
+    library_books = query.all()
+
+    # Формируем JSON
     items = [
         {
             "bookUid": lb.book.book_uid,
@@ -134,6 +159,7 @@ def get_books(library_uid):
             "availableCount": lb.available_count
         } for lb in library_books
     ]
+
     return jsonify({
         "page": page,
         "pageSize": size,

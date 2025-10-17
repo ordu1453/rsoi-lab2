@@ -50,7 +50,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: postgresql://program:test@postgres:5432/library
+      DATABASE_URL: postgresql://program:test@postgres:5432/libraries
       FLASK_APP: app.py
       FLASK_ENV: development
     ports:
