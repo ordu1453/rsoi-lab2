@@ -54,19 +54,19 @@ with app.app_context():
 
 # --- API endpoints ---
 
-@app.route('/reservations', methods=['GET'])
+@app.route('/api/v1/reservations', methods=['GET'])
 def get_all_reservations():
     reservations = Reservation.query.all()
     return jsonify([r.to_dict() for r in reservations]), 200
 
 
-@app.route('/reservations/<username>', methods=['GET'])
+@app.route('/api/v1/reservations/<username>', methods=['GET'])
 def get_user_reservations(username):
     reservations = Reservation.query.filter_by(username=username).all()
     return jsonify([r.to_dict() for r in reservations]), 200
 
 
-@app.route('/reservations', methods=['POST'])
+@app.route('/api/v1/reservations', methods=['POST'])
 def create_reservation():
     data = request.get_json()
     username = data.get('username')
@@ -89,7 +89,7 @@ def create_reservation():
     return jsonify(reservation.to_dict()), 201
 
 
-@app.route('/reservations/<reservation_uid>/return', methods=['POST'])
+@app.route('/api/v1/reservations/<reservation_uid>/return', methods=['POST'])
 def return_book(reservation_uid):
     reservation = Reservation.query.filter_by(reservation_uid=reservation_uid).first()
     if not reservation:
@@ -100,7 +100,7 @@ def return_book(reservation_uid):
     return jsonify(reservation.to_dict()), 200
 
 
-@app.route('/')
+@app.route('/api/v1/')
 def index():
     return jsonify({"service": "Reservation Service", "status": "running"})
 
