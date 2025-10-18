@@ -78,9 +78,9 @@ def get_reservations():
 
 @app.route("/api/v1/rating", methods = ["GET"])
 def get_rating():
-    user_name = request.args.get("X-User-Name")
-    params = {"X-User_Name" : user_name}
-    resp = requests.get(f"{RATING_URL}/ratings", params=params, timeout=5)
+    user_name = request.headers.get("X-User-Name")
+    headers = {"X-User-Name" : user_name}
+    resp = requests.get(f"{RATING_URL}/rating", headers=headers, timeout=5)
     return jsonify(resp.json()), resp.status_code
 
 # Health check

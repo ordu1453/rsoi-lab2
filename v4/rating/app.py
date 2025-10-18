@@ -28,7 +28,7 @@ with app.app_context():
     db.create_all()
 
     # GET /api/v1/rating?username=<username>
-@app.route("/api/v1/rating", methods=["GET"])
+@app.route("/rating", methods=["GET"])
 def get_rating():
     username = request.headers.get("X-User-Name")
     if not username:
@@ -45,7 +45,7 @@ def get_rating():
         return jsonify({"stars": new_rating.stars})
 
 # POST /api/v1/rating - для теста: изменить рейтинг
-@app.route("/api/v1/rating", methods=["POST"])
+@app.route("/rating", methods=["POST"])
 def update_rating():
     data = request.get_json()
     username = data.get("username")
