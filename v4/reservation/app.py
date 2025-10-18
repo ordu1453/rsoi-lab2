@@ -69,16 +69,18 @@ def get_user_reservations(username):
 @app.route('/reservations', methods=['POST'])
 def create_reservation():
     data = request.get_json()
-    username = data.get('username')
-    book_uid = data.get('book_uid')
-    library_uid = data.get('library_uid')
-    till_date = data.get('till_date')
+    book_uid = data.get('bookUid')
+    library_uid = data.get('libraryUid')
+    till_date = data.get('tillDate')
 
-    if not all([username, book_uid, library_uid, till_date]):
+    content_type = request.headers.get("Content-Type")
+    user_name = request.headers.get("X-User-Name")
+
+    if not all([ book_uid, library_uid, till_date]):
         return jsonify({"error": "Missing required fields"}), 400
 
     reservation = Reservation(
-        username=username,
+        username = user_name,
         book_uid=book_uid,
         library_uid=library_uid,
         till_date=datetime.fromisoformat(till_date)

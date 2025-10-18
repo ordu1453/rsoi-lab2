@@ -64,8 +64,21 @@ def get_book_rating(book_uid):
 # Пример: создать бронирование книги
 @app.route("/api/v1/reservations", methods=["POST"])
 def create_reservation():
+    content_type = request.headers.get("Content-Type")
+    user_name = request.headers.get("X-User-Name")
     data = request.get_json()
-    resp = requests.post(f"{RESERVATION_URL}/reservations", json=data)
+
+    book_uid = data.get("bookUid")
+    library_uid = data.get("libraryUid")
+    till_date = data.get("tillDate")
+
+    headers = {"Content-Type" : content_type,
+               "X-User-Name": user_name}
+    json = {"bookUid":book_uid, 
+            "libraryUid": library_uid,
+            "tillDate":till_date}
+    data = request.get_json()
+    resp = requests.post(f"{RESERVATION_URL}/reservations", json=json, headers=headers)
     return jsonify(resp.json()), resp.status_code
 
 # Пример: получить все бронирования пользователя
