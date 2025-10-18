@@ -80,7 +80,7 @@ def create_tables():
         db.session.commit()
         print("Test data created")
 
-@app.route('/api/v1/libraries', methods=['GET'])
+@app.route('/libraries', methods=['GET'])
 def get_libraries():
     def safe_int(value, default):
         try:
@@ -118,7 +118,7 @@ def get_libraries():
 
 
 
-@app.route('/api/v1/libraries/<library_uid>/books', methods=['GET'])
+@app.route('/libraries/<library_uid>/books', methods=['GET'])
 def get_books(library_uid):
     DEFAULT_PAGE = 1
     DEFAULT_SIZE = 1
