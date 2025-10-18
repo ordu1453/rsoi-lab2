@@ -66,6 +66,9 @@ def update_rating():
     db.session.commit()
     return jsonify(rating.to_dict()), 200
 
+@app.route('/manage/health', methods=['GET'])
+def health():
+    return "OK", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8050, debug=True)

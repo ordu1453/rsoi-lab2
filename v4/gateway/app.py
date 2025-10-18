@@ -88,6 +88,24 @@ def get_reservations():
     resp = requests.get(f"{RESERVATION_URL}/reservations?user_id={user_id}")
     return jsonify(resp.json()), resp.status_code
 
+@app.route('/api/v1/reservations/<reservation_uid>/return', methods=['POST'])
+def return_book(reservation_uid):
+    user_name = request.headers.get("X-User-Name")
+    data = request.get_json()
+
+    condition = data.get("condition")
+    date = data.get("date")
+
+    headers = {
+        "X-User-Name":user_name
+    }
+
+    json = {
+        "condition":condition,
+        "date": date
+    }
+    resp = requests.post(f"{RESERVATION_URL}/reservations/{reservation_uid}/return", json=json, headers=headers)
+    return jsonify(resp.json()), resp.status_code
 
 @app.route("/api/v1/rating", methods = ["GET"])
 def get_rating():
@@ -97,9 +115,9 @@ def get_rating():
     return jsonify(resp.json()), resp.status_code
 
 # Health check
-@app.route("/health", methods=["GET"])
+@app.route('/manage/health', methods=['GET'])
 def health():
-    return jsonify({"status": "ok"}), 200
+    return "OK", 200
 
 
 if __name__ == "__main__":

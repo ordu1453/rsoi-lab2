@@ -95,16 +95,18 @@ def create_reservation():
 def return_book(reservation_uid):
     reservation = Reservation.query.filter_by(reservation_uid=reservation_uid).first()
     if not reservation:
-        return jsonify({"error": "Reservation not found"}), 404
+        user_name = request.headers.get("X-User-Name")
+        reservation = Reservation.query.filter_by(username=user_name).first()
+        # return jsonify({"error": "Reservation not found"}), 404
 
     reservation.status = 'RETURNED'
     db.session.commit()
     return jsonify(reservation.to_dict()), 200
 
 
-@app.route('/reservations/manage/health')
-def index():
-    return jsonify({"service": "Reservation Service", "status": "running"})
+@app.route('/manage/health', methods=['GET'])
+def health():
+    return "OK", 200
 
 
 if __name__ == '__main__':
