@@ -88,7 +88,7 @@ def create_reservation():
     db.session.add(reservation)
     db.session.commit()
 
-    return jsonify(reservation.to_dict()), 201
+    return jsonify(reservation.to_dict()), 200
 
 
 @app.route('/reservations/<reservation_uid>/return', methods=['POST'])
