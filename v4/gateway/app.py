@@ -105,7 +105,7 @@ def return_book(reservation_uid):
         "date": date
     }
     resp = requests.post(f"{RESERVATION_URL}/reservations/{reservation_uid}/return", json=json, headers=headers)
-    return jsonify({"message": ""}), resp.status_code
+    return jsonify({"message": ""}), 204
 
 @app.route("/api/v1/rating", methods = ["GET"])
 def get_rating():
