@@ -80,6 +80,21 @@ def create_tables():
         db.session.commit()
         print("Test data created")
 
+@app.route('/libraries/<library_uid>', methods=['GET'])
+def get_library(library_uid):
+    library = Library.query.filter_by(library_uid=library_uid).first()
+    if not library:
+        return jsonify({"message": "Library not found"}), 404
+    items = {
+            "libraryUid": library.library_uid,
+            "name": library.name,
+            "address": library.address,
+            "city": library.city
+        }
+    return jsonify(items)
+    
+
+
 @app.route('/libraries', methods=['GET'])
 def get_libraries():
     def safe_int(value, default):
@@ -88,7 +103,6 @@ def get_libraries():
         except (TypeError, ValueError):
             return default
 
-    # Читаем query-параметры
     city = request.args.get('city')
     page = safe_int(request.args.get('page'), 1)
     size = safe_int(request.args.get('size'), 1)
@@ -116,6 +130,21 @@ def get_libraries():
         "items": items
     })
 
+@app.route('/libraries/<library_uid>/<book_uid>', methods=['GET'])
+def get_book_data(library_uid, book_uid):
+    book = Book.query.filter_by(book_uid=book_uid).first()
+    if not book:
+        return jsonify({"message": "book not found"}), 404
+    
+    return jsonify({
+        "name": book.name,
+        "genre": book.genre,
+        "condition": book.condition,
+        "author": book.author
+    })
+    
+
+
 
 
 @app.route('/libraries/<library_uid>/books', methods=['GET'])
@@ -129,18 +158,15 @@ def get_books(library_uid):
         except (TypeError, ValueError):
             return default
 
-    # Читаем query-параметры
     show_all = request.args.get('showAll', 'false').lower() == 'true'
     page = safe_int(request.args.get('page'), DEFAULT_PAGE)
     size = safe_int(request.args.get('size'), DEFAULT_SIZE)
 
 
-    # Находим библиотеку
     library = Library.query.filter_by(library_uid=library_uid).first()
     if not library:
         return jsonify({"message": "Library not found"}), 404
 
-    # Формируем запрос к книгам
     query = LibraryBook.query.filter_by(library_id=library.id)
     if not show_all:
         query = query.filter(LibraryBook.available_count > 0)
@@ -148,7 +174,6 @@ def get_books(library_uid):
     total = query.count()
     library_books = query.all()
 
-    # Формируем JSON
     items = [
         {
             "bookUid": lb.book.book_uid,
@@ -168,7 +193,6 @@ def get_books(library_uid):
     })
 
 
-# Health check
 @app.route('/manage/health', methods=['GET'])
 def health():
     return "OK", 200

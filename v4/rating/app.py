@@ -5,7 +5,6 @@ import os
 
 app = Flask(__name__)
 
-# Используем имя сервиса 'postgres' вместо 'localhost'
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql://program:test@postgres:5432/ratings"
@@ -27,7 +26,6 @@ class Rating(db.Model):
 with app.app_context():
     db.create_all()
 
-    # GET /api/v1/rating?username=<username>
 @app.route("/rating", methods=["GET"])
 def get_rating():
     username = request.headers.get("X-User-Name")
@@ -44,7 +42,6 @@ def get_rating():
         db.session.commit()
         return jsonify({"stars": new_rating.stars})
 
-# POST /api/v1/rating - для теста: изменить рейтинг
 @app.route("/rating", methods=["POST"])
 def update_rating():
     data = request.get_json()
