@@ -1,124 +1,167 @@
 from flask import Flask, jsonify, request
 import requests
+from datetime import datetime
 
 app = Flask(__name__)
 
-# В Docker-сети имена контейнеров = hostnames
 LIBRARY_URL = "http://library_service:8060"
 RATING_URL = "http://rating_service:8050"
 RESERVATION_URL = "http://reservation_service:8070"
 
-# Пример: получить список всех библиотек
+# -------------------- Получение библиотек --------------------
 @app.route("/api/v1/libraries", methods=["GET"])
 def get_libraries():
-    city = request.args.get('city')
-    category = request.args.get("category")
-    page = request.args.get("page")
+    city = request.args.get("city")
+    page = request.args.get("page", 1)
+    size = request.args.get("size", 10)
 
-    # Формируем параметры для другого сервиса
-    params = {
-        "category": category,
-        "page": page,
-        "city": city
-    }
-
-    response = requests.get(f"{LIBRARY_URL}/libraries", params=params, timeout=5)
-    if response.status_code == 200:
-        try:
-            data = response.json()
-            print(data)
-        except ValueError:
-            print("Ответ не в формате JSON:", response.text)
-    else:
-        print(f"Ошибка {response.status_code}: {response.text}")
-    return jsonify(response.json()), response.status_code
-
-@app.route('/api/v1/libraries/<library_uid>/books', methods=['GET'])
-def get_books(library_uid):
-    category = request.args.get("category")
-    page = request.args.get("page")
-
-    params = {
-        "category": category,
-        "page": page
-    }
-
-    response = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}/books", params=params, timeout=5)
-    if response.status_code == 200:
-        try:
-            data = response.json()
-            print(data)
-        except ValueError:
-            print("Ответ не в формате JSON:", response.text)
-    else:
-        print(f"Ошибка {response.status_code}: {response.text}")
-    return jsonify(response.json()), response.status_code
-
-
-# Пример: получить рейтинг книги
-@app.route("/api/v1/books/<book_uid>/rating", methods=["GET"])
-def get_book_rating(book_uid):
-    resp = requests.get(f"{RATING_URL}/ratings/{book_uid}")
+    params = {"city": city, "page": page, "size": size}
+    resp = requests.get(f"{LIBRARY_URL}/libraries", params=params)
     return jsonify(resp.json()), resp.status_code
 
-# Пример: создать бронирование книги
+# -------------------- Получение книг --------------------
+@app.route("/api/v1/libraries/<library_uid>/books", methods=["GET"])
+def get_books(library_uid):
+    page = request.args.get("page", 1)
+    size = request.args.get("size", 10)
+    show_all = request.args.get("showAll", "false").lower() == "true"
+
+    params = {"page": page, "size": size, "showAll": show_all}
+    resp = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}/books", params=params)
+    return jsonify(resp.json()), resp.status_code
+
+# -------------------- Получение рейтинга --------------------
+@app.route("/api/v1/rating", methods=["GET"])
+def get_rating():
+    user_name = request.headers.get("X-User-Name")
+    headers = {"X-User-Name": user_name}
+    resp = requests.get(f"{RATING_URL}/rating", headers=headers)
+    return jsonify(resp.json()), resp.status_code
+
+# -------------------- Получение всех бронирований пользователя --------------------
+@app.route("/api/v1/reservations", methods=["GET"])
+def get_reservations():
+    user_name = request.headers.get("X-User-Name")
+    headers = {"X-User-Name": user_name}
+    resp = requests.get(f"{RESERVATION_URL}/reservations", headers=headers)
+    reservations = resp.json()
+
+    # Если пришёл объект, но тесты ожидают массив
+    if isinstance(reservations, dict):
+        reservations = [reservations]
+
+    return jsonify(reservations), resp.status_code
+
+# -------------------- Создание бронирования --------------------
 @app.route("/api/v1/reservations", methods=["POST"])
 def create_reservation():
-    content_type = request.headers.get("Content-Type")
     user_name = request.headers.get("X-User-Name")
     data = request.get_json()
-
     book_uid = data.get("bookUid")
     library_uid = data.get("libraryUid")
     till_date = data.get("tillDate")
 
-    headers = {"Content-Type" : content_type,
-               "X-User-Name": user_name}
-    json = {"bookUid":book_uid, 
+    # Проверка лимита по количеству книг
+    rented_resp = requests.get(f"{RESERVATION_URL}/reservations/{user_name}/count")
+    rented_count = rented_resp.json().get("rentedCount", 0) if rented_resp.status_code == 200 else 0
+
+    rating_resp = requests.get(f"{RATING_URL}/rating", headers={"X-User-Name": user_name})
+    stars = rating_resp.json().get("stars", 0) if rating_resp.status_code == 200 else 0
+
+    if rented_count >= stars:
+        return jsonify({"message": "Maximum number of rented books reached"}), 400
+
+    # Получаем информацию о книге и библиотеке
+    book_resp = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}/{book_uid}")
+    library_resp = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}")
+    book_data = book_resp.json() if book_resp.status_code == 200 else {}
+    library_data = library_resp.json() if library_resp.status_code == 200 else {}
+
+    # Создаём запись в Reservation Service
+    payload = {"bookUid": book_uid, "libraryUid": library_uid, "tillDate": till_date}
+    headers = {"X-User-Name": user_name, "Content-Type": "application/json"}
+    res = requests.post(f"{RESERVATION_URL}/reservations", json=payload, headers=headers)
+    reservation_json = res.json()
+
+    # Уменьшаем доступные книги
+    requests.patch(f"{LIBRARY_URL}/libraries/{library_uid}/books/{book_uid}/decrement")
+
+    response = {
+        "reservationUid": reservation_json.get("reservationUid"),
+        "status": reservation_json.get("status", "RENTED"),
+        "startDate": reservation_json.get("startDate"),
+        "tillDate": till_date,
+        "book": {
+            "bookUid": book_uid,
+            "name": book_data.get("name", ""),
+            "author": book_data.get("author", ""),
+            "genre": book_data.get("genre", "")
+        },
+        "library": {
             "libraryUid": library_uid,
-            "tillDate":till_date}
-    data = request.get_json()
-    resp = requests.post(f"{RESERVATION_URL}/reservations", json=json, headers=headers)
-    return jsonify(resp.json()), resp.status_code
+            "name": library_data.get("name", ""),
+            "address": library_data.get("address", ""),
+            "city": library_data.get("city", "")
+        },
+        "rating": {"stars": stars}
+    }
 
-# Пример: получить все бронирования пользователя
-@app.route("/api/v1/reservations", methods=["GET"])
-def get_reservations():
-    user_id = request.args.get("user_id")
-    resp = requests.get(f"{RESERVATION_URL}/reservations?user_id={user_id}")
-    return jsonify(resp.json()), resp.status_code
+    return jsonify(response), 200
 
-@app.route('/api/v1/reservations/<reservation_uid>/return', methods=['POST'])
+# -------------------- Возврат книги --------------------
+@app.route("/api/v1/reservations/<reservation_uid>/return", methods=["POST"])
 def return_book(reservation_uid):
     user_name = request.headers.get("X-User-Name")
     data = request.get_json()
+    returned_condition = data.get("condition")
+    returned_date_str = data.get("date")
+    returned_date = datetime.strptime(returned_date_str, "%Y-%m-%d").date()
 
-    condition = data.get("condition")
-    date = data.get("date")
+    # Получаем бронирование пользователя
+    headers = {"X-User-Name": user_name}
+    resp = requests.get(f"{RESERVATION_URL}/reservations/{reservation_uid}", headers=headers)
+    reservation = resp.json()
+    if isinstance(reservation, list) and len(reservation) > 0:
+        reservation = reservation[0]
 
-    headers = {
-        "X-User-Name":user_name
-    }
+    if not reservation:
+        return jsonify({"message": "Reservation not found"}), 404
 
-    json = {
-        "condition":condition,
-        "date": date
-    }
-    resp = requests.post(f"{RESERVATION_URL}/reservations/{reservation_uid}/return", json=json, headers=headers)
-    return jsonify({"message": ""}), 204
+    till_date = datetime.strptime(reservation["tillDate"], "%Y-%m-%d").date()
+    original_condition = reservation["book"].get("condition", "EXCELLENT")
 
-@app.route("/api/v1/rating", methods = ["GET"])
-def get_rating():
-    user_name = request.headers.get("X-User-Name")
-    headers = {"X-User-Name" : user_name}
-    resp = requests.get(f"{RATING_URL}/rating", headers=headers, timeout=5)
-    return jsonify(resp.json()), resp.status_code
+    # Определяем новый статус
+    status = "RETURNED"
+    if returned_date > till_date:
+        status = "EXPIRED"
 
-# Health check
-@app.route('/manage/health', methods=['GET'])
+    # Обновляем Reservation Service
+    payload = {"condition": returned_condition, "date": returned_date_str}
+    requests.post(f"{RESERVATION_URL}/reservations/{reservation_uid}/return", json=payload, headers=headers)
+
+    # Обновляем Library Service
+    book_uid = reservation["book"]["bookUid"]
+    library_uid = reservation["library"]["libraryUid"]
+    requests.patch(f"{LIBRARY_URL}/libraries/{library_uid}/books/{book_uid}/increase")
+
+    # Обновляем рейтинг
+    penalty = 0
+    if status == "EXPIRED":
+        penalty += 10
+    if returned_condition != original_condition:
+        penalty += 10
+
+    if penalty > 0:
+        requests.patch(f"{RATING_URL}/rating/{user_name}/decrease", json={"value": penalty})
+    else:
+        requests.patch(f"{RATING_URL}/rating/{user_name}/increase", json={"value": 1})
+
+    return "", 204
+
+# -------------------- Health --------------------
+@app.route("/manage/health", methods=["GET"])
 def health():
     return "OK", 200
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=8080, debug=True)
