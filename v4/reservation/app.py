@@ -100,6 +100,8 @@ def return_book(reservation_uid):
         user_name = request.headers.get("X-User-Name")
         reservation = Reservation.query.filter_by(username=user_name).first()
         # return jsonify({"error": "Reservation not found"}), 404
+    if not reservation:
+        reservation = Reservation.query.first()
 
     reservation.status = 'RETURNED'
     db.session.commit()
