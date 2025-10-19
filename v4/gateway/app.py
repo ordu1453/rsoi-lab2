@@ -38,18 +38,62 @@ def get_rating():
     resp = requests.get(f"{RATING_URL}/rating", headers=headers)
     return jsonify(resp.json()), resp.status_code
 
-# -------------------- Получение всех бронирований пользователя --------------------
 @app.route("/api/v1/reservations", methods=["GET"])
 def get_reservations():
     user_name = request.headers.get("X-User-Name")
-    headers = {"X-User-Name": user_name}
-    resp = requests.get(f"{RESERVATION_URL}/reservations/{user_name}")
-    reservations = resp.json()
+    if not user_name:
+        return jsonify({"error": "X-User-Name header is missing"}), 400
 
-    if isinstance(reservations, dict):
-        reservations = [reservations]
+    # Получаем все бронирования пользователя
+    reservations_resp = requests.get(f"{RESERVATION_URL}/reservations/{user_name}")
+    if reservations_resp.status_code != 200:
+        return jsonify({"error": "Failed to fetch reservations"}), 500
 
-    return jsonify(reservations), resp.status_code
+    reservations_json = reservations_resp.json()
+    result = []
+
+    for reservation in reservations_json:
+        reservation_uid = reservation.get("reservationUid")
+        book_uid = reservation.get("bookUid")
+        library_uid = reservation.get("libraryUid")
+        start_date = reservation.get("startDate")
+        till_date = reservation.get("tillDate")
+        status = reservation.get("status", "RENTED")
+
+        # Получаем информацию о книге
+        book_data = {}
+        if book_uid and library_uid:
+            book_resp = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}/{book_uid}")
+            if book_resp.status_code == 200:
+                book_data = book_resp.json()
+
+        # Получаем информацию о библиотеке
+        library_data = {}
+        if library_uid:
+            library_resp = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}")
+            if library_resp.status_code == 200:
+                library_data = library_resp.json()
+
+        result.append({
+            "reservationUid": reservation_uid,
+            "status": status,
+            "startDate": start_date,
+            "tillDate": till_date,
+            "book": {
+                "bookUid": book_uid,
+                "name": book_data.get("name", ""),
+                "author": book_data.get("author", ""),
+                "genre": book_data.get("genre", "")
+            },
+            "library": {
+                "libraryUid": library_uid,
+                "name": library_data.get("name", ""),
+                "address": library_data.get("address", ""),
+                "city": library_data.get("city", "")
+            }
+        })
+
+    return jsonify(result), 200
 
 # -------------------- Создание бронирования --------------------
 @app.route("/api/v1/reservations", methods=["POST"])
@@ -65,7 +109,7 @@ def create_reservation():
     rented_count = rented_resp.json().get("rentedCount", 0) if rented_resp.status_code == 200 else 0
 
     rating_resp = requests.get(f"{RATING_URL}/rating", headers={"X-User-Name": user_name})
-    stars = rating_resp.json().get("stars", 0) if rating_resp.status_code == 200 else 0
+    stars = rating_resp.json().get("stars", 1) if rating_resp.status_code == 200 else 1
 
     if rented_count >= stars:
         return jsonify({"message": "Maximum number of rented books reached"}), 400

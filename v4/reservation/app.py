@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 import uuid
 
@@ -23,7 +23,7 @@ class Reservation(db.Model):
     book_uid = db.Column(db.String(36), nullable=False)
     library_uid = db.Column(db.String(36), nullable=False)
     status = db.Column(db.String(20), default='RENTED') # 'RENTED', 'RETURNED', 'EXPIRED'
-    start_date = db.Column(db.Date, default=datetime.utcnow)
+    start_date = db.Column(db.Date, default=lambda: (datetime.utcnow() + timedelta(hours=3)).date())
     till_date = db.Column(db.Date, nullable=False)
 
     def to_dict(self):
@@ -40,17 +40,17 @@ class Reservation(db.Model):
 with app.app_context():
     db.create_all()
 
-    if not Reservation.query.first():
-        sample = Reservation(
-            reservation_uid = "e82cc1c9-0d5e-46c4-ae94-d815677a5673",
-            username="Test Max",
-            book_uid="f7cdc58f-2caf-4b15-9727-f89dcc629b27",
-            library_uid="83575e12-7ce0-48ee-9931-51919ff3c9ee",
-            start_date = datetime(2025, 12, 10),
-            till_date=datetime(2025, 12, 31)
-        )
-        db.session.add(sample)
-        db.session.commit()
+    # if not Reservation.query.first():
+    #     sample = Reservation(
+    #         reservation_uid = "e82cc1c9-0d5e-46c4-ae94-d815677a5673",
+    #         username="Test Max",
+    #         book_uid="f7cdc58f-2caf-4b15-9727-f89dcc629b27",
+    #         library_uid="83575e12-7ce0-48ee-9931-51919ff3c9ee",
+    #         start_date = datetime(2025, 12, 10),
+    #         till_date=datetime(2025, 12, 31)
+    #     )
+    #     db.session.add(sample)
+    #     db.session.commit()
 
 
 
