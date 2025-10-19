@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta, timezone
 import os
 import uuid
+from zoneinfo import ZoneInfo
+
 
 app = Flask(__name__)
 
@@ -23,7 +25,7 @@ class Reservation(db.Model):
     book_uid = db.Column(db.String(36), nullable=False)
     library_uid = db.Column(db.String(36), nullable=False)
     status = db.Column(db.String(20), default='RENTED') # 'RENTED', 'RETURNED', 'EXPIRED'
-    start_date = db.Column(db.Date, default=lambda: (datetime.utcnow() + timedelta(hours=3)).date())
+    start_date = db.Column(db.Date, default=lambda: datetime.now(ZoneInfo("Europe/Moscow")).date())
     till_date = db.Column(db.Date, nullable=False)
 
     def to_dict(self):
