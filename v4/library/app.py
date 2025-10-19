@@ -93,7 +93,28 @@ def get_library(library_uid):
         }
     return jsonify(items)
     
+@app.route('/libraries/<library_uid>/books/<book_uid>/decrement', methods=['PATCH'])
+def decrement_book_count(library_uid, book_uid):
+    # Находим библиотеку
+    library = Library.query.filter_by(library_uid=library_uid).first()
+    if not library:
+        return jsonify({"message": "Library not found"}), 404
 
+    # Находим связь книги с библиотекой
+    lib_book = LibraryBook.query.join(Book).filter(
+        LibraryBook.library_id == library.id,
+        Book.book_uid == book_uid
+    ).first()
+
+    if not lib_book:
+        return jsonify({"message": "Book not found in library"}), 404
+
+    # Уменьшаем доступное количество, не ниже 0
+    if lib_book.available_count > 0:
+        lib_book.available_count -= 1
+        db.session.commit()
+
+    return jsonify({"availableCount": lib_book.available_count}), 200
 
 @app.route('/libraries', methods=['GET'])
 def get_libraries():
@@ -107,13 +128,11 @@ def get_libraries():
     page = safe_int(request.args.get('page'), 1)
     size = safe_int(request.args.get('size'), 1)
 
-
     if not city:
         return jsonify({"message": "City parameter is required"}), 400
 
     query = Library.query.filter_by(city=city)
     total = query.count()
-    # libraries = query.offset((page-1)*size).limit(size).all()
     libraries = query.all()
     items = [
         {

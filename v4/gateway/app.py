@@ -11,9 +11,9 @@ RESERVATION_URL = "http://reservation_service:8070"
 # -------------------- Получение библиотек --------------------
 @app.route("/api/v1/libraries", methods=["GET"])
 def get_libraries():
-    city = request.args.get("city")
+    city = request.args.get("city", "Москва")
     page = request.args.get("page", 1)
-    size = request.args.get("size", 10)
+    size = request.args.get("size", 1)
 
     params = {"city": city, "page": page, "size": size}
     resp = requests.get(f"{LIBRARY_URL}/libraries", params=params)
@@ -23,7 +23,7 @@ def get_libraries():
 @app.route("/api/v1/libraries/<library_uid>/books", methods=["GET"])
 def get_books(library_uid):
     page = request.args.get("page", 1)
-    size = request.args.get("size", 10)
+    size = request.args.get("size", 1)
     show_all = request.args.get("showAll", "false").lower() == "true"
 
     params = {"page": page, "size": size, "showAll": show_all}
@@ -43,10 +43,9 @@ def get_rating():
 def get_reservations():
     user_name = request.headers.get("X-User-Name")
     headers = {"X-User-Name": user_name}
-    resp = requests.get(f"{RESERVATION_URL}/reservations", headers=headers)
+    resp = requests.get(f"{RESERVATION_URL}/reservations/{user_name}")
     reservations = resp.json()
 
-    # Если пришёл объект, но тесты ожидают массив
     if isinstance(reservations, dict):
         reservations = [reservations]
 
@@ -117,18 +116,19 @@ def return_book(reservation_uid):
     returned_date_str = data.get("date")
     returned_date = datetime.strptime(returned_date_str, "%Y-%m-%d").date()
 
-    # Получаем бронирование пользователя
     headers = {"X-User-Name": user_name}
-    resp = requests.get(f"{RESERVATION_URL}/reservations/{reservation_uid}", headers=headers)
-    reservation = resp.json()
-    if isinstance(reservation, list) and len(reservation) > 0:
-        reservation = reservation[0]
+    resp = requests.get(f"{RESERVATION_URL}/reservations/{reservation_uid}/return", headers=headers)
 
-    if not reservation:
+    if resp.status_code == 404:
         return jsonify({"message": "Reservation not found"}), 404
+    elif resp.status_code != 200:
+        return jsonify({"message": "Failed to fetch reservation"}), resp.status_code
+
+    reservation = resp.json()
+
 
     till_date = datetime.strptime(reservation["tillDate"], "%Y-%m-%d").date()
-    original_condition = reservation["book"].get("condition", "EXCELLENT")
+    # original_condition = reservation["bookUid"].get("condition", "EXCELLENT")
 
     # Определяем новый статус
     status = "RETURNED"
@@ -139,17 +139,17 @@ def return_book(reservation_uid):
     payload = {"condition": returned_condition, "date": returned_date_str}
     requests.post(f"{RESERVATION_URL}/reservations/{reservation_uid}/return", json=payload, headers=headers)
 
-    # Обновляем Library Service
-    book_uid = reservation["book"]["bookUid"]
-    library_uid = reservation["library"]["libraryUid"]
-    requests.patch(f"{LIBRARY_URL}/libraries/{library_uid}/books/{book_uid}/increase")
+    # # Обновляем Library Service
+    # book_uid = reservation["book"]["bookUid"]
+    # library_uid = reservation["library"]["libraryUid"]
+    # requests.patch(f"{LIBRARY_URL}/libraries/{library_uid}/books/{book_uid}/increase")
 
     # Обновляем рейтинг
     penalty = 0
     if status == "EXPIRED":
         penalty += 10
-    if returned_condition != original_condition:
-        penalty += 10
+    # if returned_condition != original_condition:
+    #     penalty += 10
 
     if penalty > 0:
         requests.patch(f"{RATING_URL}/rating/{user_name}/decrease", json={"value": penalty})

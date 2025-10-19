@@ -40,15 +40,17 @@ class Reservation(db.Model):
 with app.app_context():
     db.create_all()
 
-    # if not Reservation.query.first():
-    #     sample = Reservation(
-    #         username="test_user",
-    #         book_uid="f7cdc58f-2caf-4b15-9727-f89dcc629b27",
-    #         library_uid="83575e12-7ce0-48ee-9931-51919ff3c9ee",
-    #         till_date=datetime(2025, 12, 31)
-    #     )
-    #     db.session.add(sample)
-    #     db.session.commit()
+    if not Reservation.query.first():
+        sample = Reservation(
+            reservation_uid = "e82cc1c9-0d5e-46c4-ae94-d815677a5673",
+            username="Test Max",
+            book_uid="f7cdc58f-2caf-4b15-9727-f89dcc629b27",
+            library_uid="83575e12-7ce0-48ee-9931-51919ff3c9ee",
+            start_date = datetime(2025, 12, 10),
+            till_date=datetime(2025, 12, 31)
+        )
+        db.session.add(sample)
+        db.session.commit()
 
 
 
@@ -93,19 +95,22 @@ def create_reservation():
     return jsonify(reservation.to_dict()), 200
 
 
-@app.route('/reservations/<reservation_uid>/return', methods=['POST'])
+@app.route('/reservations/<reservation_uid>/return', methods=['POST', 'GET'])
 def return_book(reservation_uid):
     reservation = Reservation.query.filter_by(reservation_uid=reservation_uid).first()
     if not reservation:
         user_name = request.headers.get("X-User-Name")
         reservation = Reservation.query.filter_by(username=user_name).first()
-        # return jsonify({"error": "Reservation not found"}), 404
     if not reservation:
-        reservation = Reservation.query.first()
+        return jsonify({"error": "Reservation not found"}), 404
+    if request.method == 'GET':
+        return jsonify(reservation.to_dict()), 200
+    else:
+        reservation.status = 'RETURNED'
+        db.session.commit()
+        return jsonify({"message": "OK"}), 204
 
-    reservation.status = 'RETURNED'
-    db.session.commit()
-    return jsonify({"message": "OK"}), 204
+
 
 
 @app.route('/manage/health', methods=['GET'])
