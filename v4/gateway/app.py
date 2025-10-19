@@ -195,10 +195,16 @@ def return_book(reservation_uid):
     # if returned_condition != original_condition:
     #     penalty += 10
 
+
+    headersss = {"X-User-Name":user_name}
+    rating_req = requests.get(f"{RATING_URL}/rating", headers=headersss)
+    stars = rating_req.json()
+    stars_count = stars.get("stars")
+
     if penalty > 0:
-        requests.patch(f"{RATING_URL}/rating/{user_name}/decrease", json={"value": penalty})
+        requests.post(f"{RATING_URL}/rating", json={"username":user_name,"stars": stars_count+1})
     else:
-        requests.patch(f"{RATING_URL}/rating/{user_name}/increase", json={"value": 1})
+        requests.post(f"{RATING_URL}/rating", json={"username":user_name,"stars":  stars_count+1})
 
     return "", 204
 
