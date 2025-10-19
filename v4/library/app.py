@@ -187,8 +187,8 @@ def get_books(library_uid):
         return jsonify({"message": "Library not found"}), 404
 
     query = LibraryBook.query.filter_by(library_id=library.id)
-    if not show_all:
-        query = query.filter(LibraryBook.available_count > 0)
+    # if not show_all:
+    #     query = query.filter(LibraryBook.available_count > 0)
 
     total = query.count()
     library_books = query.all()
