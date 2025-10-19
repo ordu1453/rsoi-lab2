@@ -22,7 +22,7 @@ class Reservation(db.Model):
     username = db.Column(db.String(80), nullable=False)
     book_uid = db.Column(db.String(36), nullable=False)
     library_uid = db.Column(db.String(36), nullable=False)
-    status = db.Column(db.String(20), default='RENTED')  # RENTED / RETURNED
+    status = db.Column(db.String(20), default='RENTED') # 'RENTED', 'RETURNED', 'EXPIRED'
     start_date = db.Column(db.Date, default=datetime.utcnow)
     till_date = db.Column(db.Date, nullable=False)
 
@@ -40,15 +40,15 @@ class Reservation(db.Model):
 with app.app_context():
     db.create_all()
 
-    if not Reservation.query.first():
-        sample = Reservation(
-            username="test_user",
-            book_uid="f7cdc58f-2caf-4b15-9727-f89dcc629b27",
-            library_uid="83575e12-7ce0-48ee-9931-51919ff3c9ee",
-            till_date=datetime(2025, 12, 31)
-        )
-        db.session.add(sample)
-        db.session.commit()
+    # if not Reservation.query.first():
+    #     sample = Reservation(
+    #         username="test_user",
+    #         book_uid="f7cdc58f-2caf-4b15-9727-f89dcc629b27",
+    #         library_uid="83575e12-7ce0-48ee-9931-51919ff3c9ee",
+    #         till_date=datetime(2025, 12, 31)
+    #     )
+    #     db.session.add(sample)
+    #     db.session.commit()
 
 
 
@@ -57,6 +57,10 @@ def get_all_reservations():
     reservations = Reservation.query.all()
     return jsonify([r.to_dict() for r in reservations]), 200
 
+@app.route('/reservations/<username>/count', methods=['GET'])
+def get_user_rented_count(username):
+    count = Reservation.query.filter_by(username=username, status='RENTED').count()
+    return jsonify({"rentedCount": count}), 200
 
 @app.route('/reservations/<username>', methods=['GET'])
 def get_user_reservations(username):

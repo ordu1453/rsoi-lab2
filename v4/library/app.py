@@ -80,6 +80,21 @@ def create_tables():
         db.session.commit()
         print("Test data created")
 
+@app.route('/libraries/<library_uid>', methods=['GET'])
+def get_library(library_uid):
+    library = Library.query.filter_by(library_uid=library_uid).first()
+    if not library:
+        return jsonify({"message": "Library not found"}), 404
+    items = {
+            "libraryUid": library.library_uid,
+            "name": library.name,
+            "address": library.address,
+            "city": library.city
+        }
+    return jsonify(items)
+    
+
+
 @app.route('/libraries', methods=['GET'])
 def get_libraries():
     def safe_int(value, default):
@@ -114,6 +129,21 @@ def get_libraries():
         "totalElements": total,
         "items": items
     })
+
+@app.route('/libraries/<library_uid>/<book_uid>', methods=['GET'])
+def get_book_data(library_uid, book_uid):
+    book = Book.query.filter_by(book_uid=book_uid).first()
+    if not book:
+        return jsonify({"message": "book not found"}), 404
+    
+    return jsonify({
+        "name": book.name,
+        "genre": book.genre,
+        "condition": book.condition,
+        "author": book.author
+    })
+    
+
 
 
 

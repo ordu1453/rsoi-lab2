@@ -61,20 +61,83 @@ def get_book_rating(book_uid):
 def create_reservation():
     content_type = request.headers.get("Content-Type")
     user_name = request.headers.get("X-User-Name")
-    data = request.get_json()
 
+    if not user_name:
+        return jsonify({"message": "Header X-User-Name is required"}), 400
+
+    data = request.get_json()
     book_uid = data.get("bookUid")
     library_uid = data.get("libraryUid")
     till_date = data.get("tillDate")
 
-    headers = {"Content-Type" : content_type,
-               "X-User-Name": user_name}
-    json = {"bookUid":book_uid, 
+    if not all([book_uid, library_uid, till_date]):
+        return jsonify({"message": "bookUid, libraryUid and tillDate are required"}), 400
+
+    # --- Проверяем количество арендованных книг ---
+    rented_resp = requests.get(f"{RESERVATION_URL}/reservations/{user_name}/count")
+    rented_count = rented_resp.json().get("rentedCount", 0) if rented_resp.status_code == 200 else 0
+
+    # --- Получаем рейтинг пользователя ---
+    rating_resp = requests.get(f"{RATING_URL}/rating", headers={"X-User-Name": user_name})
+    stars = rating_resp.json().get("stars", 0) if rating_resp.status_code == 200 else 0
+
+    # --- Проверяем лимит ---
+    max_books_allowed = stars
+    if rented_count >= max_books_allowed:
+        return jsonify({"message": "Maximum number of rented books reached"}), 400
+
+
+    # --- Получаем информацию о библиотеке ---
+    lib_resp = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}")
+    library_data = lib_resp.json() if lib_resp.status_code == 200 else {}
+
+    # --- Получаем информацию о книге ---
+    book_resp = requests.get(f"{LIBRARY_URL}/libraries/{library_uid}/{book_uid}")
+    book_data = book_resp.json() if book_resp.status_code == 200 else {}
+  
+    # --- Создаём запись в Reservation Service ---
+    payload = {
+        "bookUid": book_uid,
+        "libraryUid": library_uid,
+        "tillDate": till_date
+    }
+    headers = {"Content-Type": content_type, "X-User-Name": user_name}
+    reservation_resp = requests.post(f"{RESERVATION_URL}/reservations", json=payload, headers=headers)
+
+    if reservation_resp.status_code not in (200, 201):
+        return jsonify({"message": "Failed to create reservation"}), reservation_resp.status_code
+
+    reservation_json = reservation_resp.json()
+
+    # --- Уменьшаем количество доступных книг ---
+    requests.patch(f"{LIBRARY_URL}/api/v1/books/{book_uid}/decrement", json={"libraryUid": library_uid})
+
+    # --- Финальный JSON ---
+    resp = {
+        "reservationUid": reservation_json.get("reservationUid"),
+        "status": reservation_json.get("status", "RENTED"),
+        "startDate": reservation_json.get("startDate"),
+        "tillDate": till_date,
+        "book": {
+            "bookUid": book_uid,
+            "name": book_data.get("name", ""),
+            "author": book_data.get("author", ""),
+            "genre": book_data.get("genre", "")
+        },
+        "library": {
             "libraryUid": library_uid,
-            "tillDate":till_date}
-    data = request.get_json()
-    resp = requests.post(f"{RESERVATION_URL}/reservations", json=json, headers=headers)
-    return jsonify(resp.json()), resp.status_code
+            "name": library_data.get("name", ""),
+            "address": library_data.get("address", ""),
+            "city": library_data.get("city", "")
+        },
+        "rating": {
+            "stars": stars
+        }
+    }
+
+    return jsonify(resp), 200
+
+
 
 @app.route("/api/v1/reservations", methods=["GET"])
 def get_reservations():
