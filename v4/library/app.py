@@ -88,7 +88,6 @@ def get_libraries():
         except (TypeError, ValueError):
             return default
 
-    # Читаем query-параметры
     city = request.args.get('city')
     page = safe_int(request.args.get('page'), 1)
     size = safe_int(request.args.get('size'), 1)
@@ -129,18 +128,15 @@ def get_books(library_uid):
         except (TypeError, ValueError):
             return default
 
-    # Читаем query-параметры
     show_all = request.args.get('showAll', 'false').lower() == 'true'
     page = safe_int(request.args.get('page'), DEFAULT_PAGE)
     size = safe_int(request.args.get('size'), DEFAULT_SIZE)
 
 
-    # Находим библиотеку
     library = Library.query.filter_by(library_uid=library_uid).first()
     if not library:
         return jsonify({"message": "Library not found"}), 404
 
-    # Формируем запрос к книгам
     query = LibraryBook.query.filter_by(library_id=library.id)
     if not show_all:
         query = query.filter(LibraryBook.available_count > 0)
@@ -148,7 +144,6 @@ def get_books(library_uid):
     total = query.count()
     library_books = query.all()
 
-    # Формируем JSON
     items = [
         {
             "bookUid": lb.book.book_uid,
@@ -168,7 +163,6 @@ def get_books(library_uid):
     })
 
 
-# Health check
 @app.route('/manage/health', methods=['GET'])
 def health():
     return "OK", 200

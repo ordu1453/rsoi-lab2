@@ -37,7 +37,6 @@ class Reservation(db.Model):
             "tillDate": self.till_date.isoformat()
         }
 
-# --- Инициализация БД и тестовые данные ---
 with app.app_context():
     db.create_all()
 
@@ -52,7 +51,6 @@ with app.app_context():
         db.session.commit()
 
 
-# --- API endpoints ---
 
 @app.route('/reservations', methods=['GET'])
 def get_all_reservations():
@@ -88,7 +86,7 @@ def create_reservation():
     db.session.add(reservation)
     db.session.commit()
 
-    return jsonify(reservation.to_dict()), 201
+    return jsonify(reservation.to_dict()), 200
 
 
 @app.route('/reservations/<reservation_uid>/return', methods=['POST'])

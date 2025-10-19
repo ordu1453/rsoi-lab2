@@ -3,19 +3,16 @@ import requests
 
 app = Flask(__name__)
 
-# В Docker-сети имена контейнеров = hostnames
 LIBRARY_URL = "http://library_service:8060"
 RATING_URL = "http://rating_service:8050"
 RESERVATION_URL = "http://reservation_service:8070"
 
-# Пример: получить список всех библиотек
 @app.route("/api/v1/libraries", methods=["GET"])
 def get_libraries():
     city = request.args.get('city')
     category = request.args.get("category")
     page = request.args.get("page")
 
-    # Формируем параметры для другого сервиса
     params = {
         "category": category,
         "page": page,
@@ -55,13 +52,11 @@ def get_books(library_uid):
     return jsonify(response.json()), response.status_code
 
 
-# Пример: получить рейтинг книги
 @app.route("/api/v1/books/<book_uid>/rating", methods=["GET"])
 def get_book_rating(book_uid):
     resp = requests.get(f"{RATING_URL}/ratings/{book_uid}")
     return jsonify(resp.json()), resp.status_code
 
-# Пример: создать бронирование книги
 @app.route("/api/v1/reservations", methods=["POST"])
 def create_reservation():
     content_type = request.headers.get("Content-Type")
@@ -81,7 +76,6 @@ def create_reservation():
     resp = requests.post(f"{RESERVATION_URL}/reservations", json=json, headers=headers)
     return jsonify(resp.json()), resp.status_code
 
-# Пример: получить все бронирования пользователя
 @app.route("/api/v1/reservations", methods=["GET"])
 def get_reservations():
     user_id = request.args.get("user_id")
@@ -114,7 +108,6 @@ def get_rating():
     resp = requests.get(f"{RATING_URL}/rating", headers=headers, timeout=5)
     return jsonify(resp.json()), resp.status_code
 
-# Health check
 @app.route('/manage/health', methods=['GET'])
 def health():
     return "OK", 200
