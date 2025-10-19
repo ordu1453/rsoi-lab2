@@ -103,7 +103,7 @@ def return_book(reservation_uid):
 
     reservation.status = 'RETURNED'
     db.session.commit()
-    return jsonify(reservation.to_dict()), 200
+    return jsonify({"message": "OK"}), 204
 
 
 @app.route('/manage/health', methods=['GET'])
